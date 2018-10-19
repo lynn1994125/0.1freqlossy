@@ -1,0 +1,190 @@
+setwd("C:\\Users\\Lab214b\\Desktop\\0.1freqlossy")
+source("feature.pre.processing.R", encoding = "UTF-8")
+# feature.pre.processing( data )  pre-process single word the position in the article and delete unimportant character
+#                                 data = training data
+#                                 output = a dataframe have id , index , word
+source("feature.extraction.R")
+# feature.extraction (word) ngram , duplicate.deletion
+#                     word = after pre.processing's data
+#                     output = a dataframe have word, freq
+#source("feature.dic.R")
+#source("potential.dic.R")
+source("frequencesequce.R")
+# ngram( word)  ngram extraction
+#               word = after pre.processing data
+#               output = a dataframe have ngram word but not delete duplicating qantity
+source("duplicate.deletion.R")
+# duplicate.deletion(wordseqdataframe) minus the duplicated count
+#                                      wordseqdataframe = after ngram data frame
+#                                      output = a dataframe have ngram word after delete duplicating qantity
+source("lossy.counting.R")
+# lossy.counting (wordall,word,bucketid )  deal  initialize lossy counting and updating
+#                                          wordall = all word , word = new word , bucketid = bucket id
+#                                          output data frame word,freq,delta
+source("lossy.counting.update.R")
+# lossy.counting.update ( data1, data2, bucketid ) update the dictionary
+#                                                  data1 = after duplicate.deletion new data frame ; data2 = the old dictionary ; bucketid= the current bucket id
+#                                                  output = a dataframe combine the old dictionary and new ngram
+source("lossy.counting.delete.R")
+# lossy.counting.delete ( wordall,bkt.num,min.sup,del.sup,bucketid ) if dictionary's word is not enough Quantity then delete it
+#                                                                    wordall = the dictionary ; bkt.num = the Quantity of a bucket ; min.sup = minimum support
+#                                                                    del.sup = error support ;  bucketid= the current bucket id
+#                                                                    output = a dataframe after lossy.counting.update's data and delete the word less than threshold
+source("dictionary.R")
+# dictionary (yword,nword,y,n)  calculate dictionary's words weight
+#                               yword = class1's feature word ; nword = non class1's feature word ; y = class1's article ; n =  non class1's article
+#                               output = a dataframe with word after calculating the word's weight
+source("weight.R")
+# weight (train,classword,class) find the class lowest weight
+#                                train = training data ; classword = the class feature words ; class = which class do you calculate its weight
+#                                output = a weight that is the least weight of training data
+source("test.weight.calculation.R")
+# test.weight.calculation(test,class1word,class2word) calculate testing articles score
+#                                                     test = testing data ; class1word = the class 1's feature word ; class2word = the class 2's feature word
+#                                                     output = a dataframe with testing data after calculating the testing data's weight
+source("evaluation.R")
+# evaluation (train,test,class1,class2,bkt.num) evaluation this experiment result
+#                                               train = training data ; test = testing data ; class1 = after classifying  class 1's article ;
+#                                               class2 = after classifying  class 2's article ; bkt.num = bucket quantity
+#                                               output = a table with the evaluation's result
+source("do.R")
+# set your document path
+library("data.table", lib.loc="~/R/win-library/3.4")
+#doc.num <- 0
+library("data.table", lib.loc="~/R/win-library/3.4")
+library("e1071", lib.loc="~/R/win-library/3.4")
+min.sup <- 0.1 # 出現在至少5篇文件
+min.del <- 0.05
+#del.sup <- err.tol*min.sup # 0.02
+#threshold <- 5
+type = 2
+# if (del.sup == 0 ) {
+#   bkt.num = doc.num
+# } else {
+#   bkt.num = round( 1/del.sup )
+# }
+data1 <- read.csv(".\\graduate\\預設標籤\\graduate2015.csv")  # 201612 ~ 201703
+data1 <- data1[which(data1$month >= 12),]
+data1 <- data1[,-1]
+data1$label = 0
+colnames(data1) <- c( "id"       ,     "title"    ,    "author"    ,   "time"    ,     "class"       , "excerpt"   ,   "url"        ,  "hashtag"     , "titlenum"     ,"articlenum",   "exclamations","question"  ,   "link" ,        "subclass"  ,   "month"   ,     "year"   ,      "date" ,        "ymd"      ,    "word"     ,    "label"    )
+#data1$title <- gsub("請益","", data1$title)
+data1$label[which(data1$subclass %in% "請益" )] <- 1
+data1$label[which(data1$subclass %in% "情報" )] <- 2
+data1$label[which(data1$subclass %in% "閒聊" )] <- 3
+data1$label[which(data1$subclass %in% "心得" )] <- 4
+data1$label[which(data1$subclass %in% "徵求" )] <- 5
+#data0 <- read.csv(".\\graduate\\預設標籤\\graduate2016.csv")  # 201612 ~ 201703
+data1 <- read.csv(".\\graduate\\預設標籤\\graduate2015.csv")  # 201612 ~ 201703
+data1 <- data1[which(data1$month >= 12),]
+data1 <- data1[,-1]
+data1$label = 0
+colnames(data1) <- c( "id"       ,     "title"    ,    "author"    ,   "time"    ,     "class"       , "excerpt"   ,   "url"        ,  "hashtag"     , "titlenum"     ,"articlenum",   "exclamations","question"  ,   "link" ,        "subclass"  ,   "month"   ,     "year"   ,      "date" ,        "ymd"      ,    "word"     ,    "label"    )
+#data1$title <- gsub("請益","", data1$title)
+data1$label[which(data1$subclass %in% "請益" )] <- 1
+data1$label[which(data1$subclass %in% "情報" )] <- 2
+data1$label[which(data1$subclass %in% "閒聊" )] <- 3
+data1$label[which(data1$subclass %in% "心得" )] <- 4
+data1$label[which(data1$subclass %in% "徵求" )] <- 5
+data0 <- read.csv(".\\graduate\\預設標籤\\graduate2016.csv")  # 201612 ~ 201703
+#data0 <- read.csv("未標記文章.csv")
+data0 <- data0[,-1]
+data0$label = 0
+colnames(data0) <- c( "id"       ,     "title"    ,    "author"    ,   "time"    ,     "class"       , "excerpt"   ,   "url"        ,  "hashtag"     , "titlenum"     ,"articlenum",   "exclamations","question"  ,   "link" ,        "subclass"  ,   "month"   ,     "year"   ,      "date" ,        "ymd"      ,    "word"     ,    "label"    )
+#data1$title <- gsub("請益","", data1$title)
+data0$label[which(data0$subclass %in% "請益" )] <- 1
+data0$label[which(data0$subclass %in% "情報" )] <- 2
+data0$label[which(data0$subclass %in% "閒聊" )] <- 3
+data0$label[which(data0$subclass %in% "心得" )] <- 4
+data0$label[which(data0$subclass %in% "徵求" )] <- 5
+source('C:/Users/Lab214b/Desktop/0.1freqlossy/do.R')
+t1 <- proc.time()
+do1 <- do(data1 ,data0 ,min.sup,type,min.del  )
+t1 <- proc.time()
+do1 <- do(data1 ,data0 ,min.sup,type,min.del  )
+do1 <- do1[ -c ( 1 : (nrow(do1)/2) ) * 2, ]  # delete the non classification's evaluation
+t2 <- proc.time()
+time <- t2-t1
+row.names(do1) <- NULL
+write.csv(do1,paste( "result Lossy",min.sup, ".csv",sep = "") )
+write.csv(data.frame( time[1],time[2],time[3] ),paste( "time-",min.sup, ".csv",sep = ""))
+source('C:/Users/Lab214b/Desktop/0.1freqlossy/main.R')
+t1 <- proc.time()
+do1 <- do(data1 ,data0 ,min.sup,type,min.del  )
+do1 <- do1[ -c ( 1 : (nrow(do1)/2) ) * 2, ]  # delete the non classification's evaluation
+t2 <- proc.time()
+time <- t2-t1
+row.names(do1) <- NULL
+write.csv(do1,paste( "result Lossy",min.sup, ".csv",sep = "") )
+write.csv(data.frame( time[1],time[2],time[3] ),paste( "time-",min.sup, ".csv",sep = ""))
+source('C:/Users/Lab214b/Desktop/0.1freqlossy/do.R')
+t1 <- proc.time()
+do1 <- do(data1 ,data0 ,min.sup,type,min.del  )
+do1 <- do1[ -c ( 1 : (nrow(do1)/2) ) * 2, ]  # delete the non classification's evaluation
+t2 <- proc.time()
+time <- t2-t1
+row.names(do1) <- NULL
+write.csv(do1,paste( "result Lossy",min.sup, ".csv",sep = "") )
+write.csv(data.frame( time[1],time[2],time[3] ),paste( "time-",min.sup, ".csv",sep = ""))
+data1 <- read.csv(".\\graduate\\預設標籤\\graduate2016.csv")  # 201612 ~ 201703
+data1 <- data1[which(data1$month >= 12),]
+data1 <- data1[,-1]
+data1$label = 0
+colnames(data1) <- c( "id"       ,     "title"    ,    "author"    ,   "time"    ,     "class"       , "excerpt"   ,   "url"        ,  "hashtag"     , "titlenum"     ,"articlenum",   "exclamations","question"  ,   "link" ,        "subclass"  ,   "month"   ,     "year"   ,      "date" ,        "ymd"      ,    "word"     ,    "label"    )
+#data1$title <- gsub("請益","", data1$title)
+data1$label[which(data1$subclass %in% "請益" )] <- 1
+data1$label[which(data1$subclass %in% "情報" )] <- 2
+data1$label[which(data1$subclass %in% "閒聊" )] <- 3
+data1$label[which(data1$subclass %in% "心得" )] <- 4
+data1$label[which(data1$subclass %in% "徵求" )] <- 5
+data0 <- read.csv(".\\graduate\\預設標籤\\graduate2017.csv")  # 201612 ~ 201703
+#data0 <- read.csv("未標記文章.csv")
+data0 <- data0[,-1]
+data0$label = 0
+colnames(data0) <- c( "id"       ,     "title"    ,    "author"    ,   "time"    ,     "class"       , "excerpt"   ,   "url"        ,  "hashtag"     , "titlenum"     ,"articlenum",   "exclamations","question"  ,   "link" ,        "subclass"  ,   "month"   ,     "year"   ,      "date" ,        "ymd"      ,    "word"     ,    "label"    )
+#data1$title <- gsub("請益","", data1$title)
+data0$label[which(data0$subclass %in% "請益" )] <- 1
+data0$label[which(data0$subclass %in% "情報" )] <- 2
+data0$label[which(data0$subclass %in% "閒聊" )] <- 3
+data0$label[which(data0$subclass %in% "心得" )] <- 4
+data0$label[which(data0$subclass %in% "徵求" )] <- 5
+t1 <- proc.time()
+do1 <- do(data1 ,data0 ,min.sup,type,min.del  )
+do1 <- do1[ -c ( 1 : (nrow(do1)/2) ) * 2, ]  # delete the non classification's evaluation
+t2 <- proc.time()
+time <- t2-t1
+row.names(do1) <- NULL
+write.csv(do1,paste( "result Lossy",min.sup, ".csv",sep = "") )
+write.csv(data.frame( time[1],time[2],time[3] ),paste( "time-",min.sup, ".csv",sep = ""))
+source('C:/Users/Lab214b/Desktop/0.1freqlossy/do.R')
+data1 <- read.csv(".\\graduate\\預設標籤\\graduate2016.csv")  # 201612 ~ 201703
+data1 <- data1[which(data1$month >= 12),]
+data1 <- data1[,-1]
+data1$label = 0
+colnames(data1) <- c( "id"       ,     "title"    ,    "author"    ,   "time"    ,     "class"       , "excerpt"   ,   "url"        ,  "hashtag"     , "titlenum"     ,"articlenum",   "exclamations","question"  ,   "link" ,        "subclass"  ,   "month"   ,     "year"   ,      "date" ,        "ymd"      ,    "word"     ,    "label"    )
+#data1$title <- gsub("請益","", data1$title)
+data1$label[which(data1$subclass %in% "請益" )] <- 1
+data1$label[which(data1$subclass %in% "情報" )] <- 2
+data1$label[which(data1$subclass %in% "閒聊" )] <- 3
+data1$label[which(data1$subclass %in% "心得" )] <- 4
+data1$label[which(data1$subclass %in% "徵求" )] <- 5
+data0 <- read.csv(".\\graduate\\預設標籤\\graduate2017.csv")  # 201612 ~ 201703
+#data0 <- read.csv("未標記文章.csv")
+data0 <- data0[,-1]
+data0$label = 0
+colnames(data0) <- c( "id"       ,     "title"    ,    "author"    ,   "time"    ,     "class"       , "excerpt"   ,   "url"        ,  "hashtag"     , "titlenum"     ,"articlenum",   "exclamations","question"  ,   "link" ,        "subclass"  ,   "month"   ,     "year"   ,      "date" ,        "ymd"      ,    "word"     ,    "label"    )
+#data1$title <- gsub("請益","", data1$title)
+data0$label[which(data0$subclass %in% "請益" )] <- 1
+data0$label[which(data0$subclass %in% "情報" )] <- 2
+data0$label[which(data0$subclass %in% "閒聊" )] <- 3
+data0$label[which(data0$subclass %in% "心得" )] <- 4
+data0$label[which(data0$subclass %in% "徵求" )] <- 5
+t1 <- proc.time()
+do1 <- do(data1 ,data0 ,min.sup,type,min.del  )
+do1 <- do1[ -c ( 1 : (nrow(do1)/2) ) * 2, ]  # delete the non classification's evaluation
+t2 <- proc.time()
+time <- t2-t1
+row.names(do1) <- NULL
+write.csv(do1,paste( "result Lossy",min.sup, ".csv",sep = "") )
+write.csv(data.frame( time[1],time[2],time[3] ),paste( "time-",min.sup, ".csv",sep = ""))
+View(do1)
